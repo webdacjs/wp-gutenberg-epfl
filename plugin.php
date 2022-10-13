@@ -2,7 +2,7 @@
 /**
  * Plugin Name:     wp-gutenberg-epfl
  * Description:     EPFL Gutenberg Blocks
- * Version:         2.22.2
+ * Version:         2.18.0
  * Author:          WordPress EPFL Team
  * License:         GPL-2.0-or-later
  * License URI:     https://www.gnu.org/licenses/gpl-2.0.html
@@ -35,8 +35,15 @@ add_action( 'plugins_loaded',  __NAMESPACE__ . '\epfl_gutenberg_load_textdomain'
 function polylang_json_api_init() {
     global $polylang;
 
-    $default = pll_default_language();
-    $langs = pll_languages_list();
+    # happens this function are not defined if the site has polylang but
+    # not installed any language
+    if (!function_exists('\pll_default_language') ||
+        !function_exists('\pll_languages_list')) {
+      return;
+    }
+
+    $default = \pll_default_language();
+    $langs = \pll_languages_list();
 
     if (isset($_GET['lang'])) {
         $cur_lang = $_GET['lang'];
@@ -49,7 +56,7 @@ function polylang_json_api_init() {
 }
 
 function polylang_json_api_languages() {
-    return pll_languages_list();
+    return \pll_languages_list();
 }
 
 // fix polylang language segmentation
@@ -64,10 +71,9 @@ if (is_plugin_active('polylang/polylang.php')) {
  * And also use the content of $allowed_block_types to know which blocks are already allowed and add the new ones.
  *
  * @param Array|Boolean $allowed_block_types Array (or bool=True if all block allowed) with blocks already allowed.
- * @param Object $post Post resource data
+ * @param WP_Block_Editor_Context $block_editor_context
  */
-function allow_epfl_blocks( $allowed_block_types, $post ) {
-
+function allow_epfl_blocks( $allowed_block_types, $block_editor_context ) {
     // Reset value
     $allowed_block_types = [];
     // We explicitely deny usage of epfl/card-panel block so we can't add more than 3 blocks inside an epfl/card-deck
@@ -92,7 +98,7 @@ function allow_epfl_blocks( $allowed_block_types, $post ) {
     {
         if(preg_match('/^epfl\//', $block_name)===1 && !in_array($block_name, $explicitly_denied_blocks))
         {
-            if($post->post_type == 'post')
+            if($block_editor_context->post->post_type == 'post')
             {
                 $block_ok = in_array($block_name, $posts_blocks_white_list);
             }
@@ -111,7 +117,7 @@ function allow_epfl_blocks( $allowed_block_types, $post ) {
     return $allowed_block_types;
 }
 
-add_filter( 'allowed_block_types', __NAMESPACE__.'\allow_epfl_blocks', 10, 2 );
+add_filter( 'allowed_block_types_all', __NAMESPACE__.'\allow_epfl_blocks', 10, 2 );
 
 /**
  * Registers all block assets so that they can be enqueued through the block editor
